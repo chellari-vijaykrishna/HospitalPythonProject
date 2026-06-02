@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Dashboard</h2>
+<p>Welcome to the Hospital Management System!</p>
+<p>Your role: <strong>{{ role }}</strong></p>
+
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Patients</h5>
+                <p class="card-text">Manage patient records</p>
+                <a href="/patients" class="btn btn-primary">View Patients</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Doctors</h5>
+                <p class="card-text">Manage doctor information</p>
+                <a href="/doctors" class="btn btn-primary">View Doctors</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Appointments</h5>
+                <p class="card-text">Schedule and manage appointments</p>
+                <a href="/appointments" class="btn btn-primary">View Appointments</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

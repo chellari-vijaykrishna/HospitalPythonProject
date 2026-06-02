@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Patient Management</h2>
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addPatientModal">Add Patient</button>
+
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Age</th>
+                <th>Gender</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="patientsTable">
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Patient Modal -->
+<div class="modal fade" id="addPatientModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Patient</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addPatientForm">
+                    <div class="mb-3">
+                        <label>Name</label>
+                        <input type="text" class="form-control" id="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Age</label>
+                        <input type="number" class="form-control" id="age" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Gender</label>
+                        <select class="form-control" id="gender">
+                            <option>Male</option>
+                            <option>Female</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label>Phone</label>
+                        <input type="text" class="form-control" id="phone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Address</label>
+                        <textarea class="form-control" id="address"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label>Medical History</label>
+                        <textarea class="form-control" id="medical_history"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="addPatient()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function loadPatients() {
+        axios.get('/api/patients')
+            .then(response => {
+                const patients = response.data;
+                const tableBody = document.getElementById('patientsTable');
+                tableBody.innerHTML = '';
+                patients.forEach(patient => {
+                    tableBody.innerHTML += `
+                        <tr>
+                            <td>${patient.id}</td>
+                            <td>${patient.name}</td>
+                            <td>${patient.age}</td>
+                            <td>${patient.gender}</td>
+                            <td>${patient.phone}</td>
+                            <td>${patient.address}</td>
+                            <td>
+                                <button class="btn btn-sm btn-danger" onclick="deletePatient(${patient.id})">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+    }
+    
+    function addPatient() {
+        const data = {
+            name: document.getElementById('name').value,
+            age: document.getElementById('age').value,
+            gender: document.getElementById('gender').value,
+            phone: document.getElementById('phone').value,
+            address: document.getElementById('address').value,
+            medical_history: document.getElementById('medical_history').value
+        };
+        
+        axios.post('/api/patients', data)
+            .then(() => {
+                location.reload();
+            });
+    }
+    
+    function deletePatient(id) {
+        if(confirm('Are you sure?')) {
+            axios.delete(`/api/patients/${id}`)
+                .then(() => {
+                    loadPatients();
+                });
+        }
+    }
+    
+    loadPatients();
+</script>
+{% endblock %}

@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Appointment Management</h2>
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addAppointmentModal">Schedule Appointment</button>
+
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Patient ID</th>
+                <th>Patient Name</th>
+                <th>Doctor ID</th>
+                <th>Doctor Name</th>
+                <th>Appointment Date</th>
+                <th>Status</th>
+                <th>Symptoms</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="appointmentsTable">
+        </tbody>
+    </table>
+</div>
+
+<!-- Schedule Appointment Modal -->
+<div class="modal fade" id="addAppointmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Schedule Appointment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addAppointmentForm">
+                    <div class="mb-3">
+                        <label>Patient ID</label>
+                        <input type="number" class="form-control" id="patient_id" required>
+                        <small class="text-muted">Enter existing patient ID</small>
+                    </div>
+                    <div class="mb-3">
+                        <label>Doctor ID</label>
+                        <input type="number" class="form-control" id="doctor_id" required>
+                        <small class="text-muted">Enter existing doctor ID</small>
+                    </div>
+                    <div class="mb-3">
+                        <label>Appointment Date & Time</label>
+                        <input type="datetime-local" class="form-control" id="appointment_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Symptoms</label>
+                        <textarea class="form-control" id="symptoms" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label>Status</label>
+                        <select class="form-control" id="status">
+                            <option value="scheduled">Scheduled</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="no-show">No Show</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="addAppointment()">Schedule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Status Modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update Appointment Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="updateStatusForm">
+                    <input type="hidden" id="update_appointment_id">
+                    <div class="mb-3">
+                        <label>Status</label>
+                        <select class="form-control" id="update_status">
+                            <option value="scheduled">Scheduled</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="no-show">No Show</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="updateAppointmentStatus()">Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Cache for patient and doctor names
+    let patientsCache = {};
+    let doctorsCache = {};
+    
+    function loadPatientsAndDoctors() {
+        // Load patients
+        axios.get('http://localhost:5002/api/patients')
+            .then(response => {
+                response.data.forEach(patient => {
+                    patientsCache[patient.id] = patient.name;
+                });
+            })
+            .catch(error => console.error('Error loading patients:', error));
+        
+        // Load doctors
+        axios.get('http://localhost:5003/api/doctors')
+            .then(response => {
+                response.data.forEach(doctor => {
+                    doctorsCache[doctor.id] = doctor.name;
+                });
+            })
+            .catch(error => console.error('Error loading doctors:', error));
+    }
+    
+    function loadAppointments() {
+        axios.get('/api/appointments')
+            .then(response => {
+                const appointments = response.data;
+                const tableBody = document.getElementById('appointmentsTable');
+                tableBody.innerHTML = '';
+                appointments.forEach(appointment => {
+                    const patientName = patientsCache[appointment.patient_id] || 'Loading...';
+                    const doctorName = doctorsCache[appointment.doctor_id] || 'Loading...';
+                    const appointmentDate = new Date(appointment.appointment_date).toLocaleString();
+                    
+                    let statusClass = '';
+                    switch(appointment.status) {
+                        case 'scheduled': statusClass = 'badge bg-secondary'; break;
+                        case 'confirmed': statusClass = 'badge bg-primary'; break;
+                        case 'completed': statusClass = 'badge bg-success'; break;
+                        case 'cancelled': statusClass = 'badge bg-danger'; break;
+                        case 'no-show': statusClass = 'badge bg-warning'; break;
+                    }
+                    
+                    tableBody.innerHTML += `
+                        <tr>
+                            <td>${appointment.id}</td>
+                            <td>${appointment.patient_id}</td>
+                            <td>${patientName}</td>
+                            <td>${appointment.doctor_id}</td>
+                            <td>${doctorName}</td>
+                            <td>${appointmentDate}</td>
+                            <td><span class="${statusClass}">${appointment.status}</span></td>
+                            <td>${appointment.symptoms || '-'}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewAppointment(${appointment.id})">View</button>
+                                <button class="btn btn-sm btn-warning" onclick="openUpdateStatus(${appointment.id}, '${appointment.status}')">Update Status</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteAppointment(${appointment.id})">Cancel</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            })
+            .catch(error => {
+                console.error('Error loading appointments:', error);
+                alert('Error loading appointments');
+            });
+    }
+    
+    function addAppointment() {
+        const data = {
+            patient_id: document.getElementById('patient_id').value,
+            doctor_id: document.getElementById('doctor_id').value,
+            appointment_date: document.getElementById('appointment_date').value,
+            symptoms: document.getElementById('symptoms').value,
+            status: document.getElementById('status').value
+        };
+        
+        axios.post('/api/appointments', data)
+            .then(() => {
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Error scheduling appointment:', error);
+                if(error.response && error.response.data) {
+                    alert(error.response.data.error);
+                } else {
+                    alert('Error scheduling appointment');
+                }
+            });
+    }
+    
+    function viewAppointment(id) {
+        axios.get(`/api/appointments/${id}`)
+            .then(response => {
+                const appointment = response.data;
+                const appointmentDate = new Date(appointment.appointment_date).toLocaleString();
+                alert(`
+                    Appointment Details:
+                    ID: ${appointment.id}
+                    Patient ID: ${appointment.patient_id}
+                    Doctor ID: ${appointment.doctor_id}
+                    Date: ${appointmentDate}
+                    Status: ${appointment.status}
+                    Symptoms: ${appointment.symptoms || 'None'}
+                `);
+            })
+            .catch(error => {
+                console.error('Error loading appointment:', error);
+                alert('Error loading appointment details');
+            });
+    }
+    
+    function openUpdateStatus(id, currentStatus) {
+        document.getElementById('update_appointment_id').value = id;
+        document.getElementById('update_status').value = currentStatus;
+        new bootstrap.Modal(document.getElementById('updateStatusModal')).show();
+    }
+    
+    function updateAppointmentStatus() {
+        const id = document.getElementById('update_appointment_id').value;
+        const status = document.getElementById('update_status').value;
+        
+        axios.patch(`/api/appointments/${id}/status`, { status: status })
+            .then(() => {
+                location.reload();
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                alert('Error updating appointment status');
+            });
+    }
+    
+    function deleteAppointment(id) {
+        if(confirm('Are you sure you want to cancel this appointment?')) {
+            axios.delete(`/api/appointments/${id}`)
+                .then(() => {
+                    loadAppointments();
+                })
+                .catch(error => {
+                    console.error('Error cancelling appointment:', error);
+                    alert('Error cancelling appointment');
+                });
+        }
+    }
+    
+    // Add filter by patient or doctor
+    function filterByPatient() {
+        const patientId = document.getElementById('filterPatientId').value;
+        if(patientId) {
+            axios.get(`/api/appointments/patient/${patientId}`)
+                .then(response => {
+                    displayAppointments(response.data);
+                })
+                .catch(error => console.error('Error filtering:', error));
+        } else {
+            loadAppointments();
+        }
+    }
+    
+    function filterByDoctor() {
+        const doctorId = document.getElementById('filterDoctorId').value;
+        if(doctorId) {
+            axios.get(`/api/appointments/doctor/${doctorId}`)
+                .then(response => {
+                    displayAppointments(response.data);
+                })
+                .catch(error => console.error('Error filtering:', error));
+        } else {
+            loadAppointments();
+        }
+    }
+    
+    function displayAppointments(appointments) {
+        const tableBody = document.getElementById('appointmentsTable');
+        tableBody.innerHTML = '';
+        appointments.forEach(appointment => {
+            const patientName = patientsCache[appointment.patient_id] || 'Loading...';
+            const doctorName = doctorsCache[appointment.doctor_id] || 'Loading...';
+            const appointmentDate = new Date(appointment.appointment_date).toLocaleString();
+            
+            tableBody.innerHTML += `
+                <tr>
+                    <td>${appointment.id}</td>
+                    <td>${appointment.patient_id}</td>
+                    <td>${patientName}</td>
+                    <td>${appointment.doctor_id}</td>
+                    <td>${doctorName}</td>
+                    <td>${appointmentDate}</td>
+                    <td>${appointment.status}</td>
+                    <td>${appointment.symptoms || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewAppointment(${appointment.id})">View</button>
+                        <button class="btn btn-sm btn-warning" onclick="openUpdateStatus(${appointment.id}, '${appointment.status}')">Update Status</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteAppointment(${appointment.id})">Cancel</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+    
+    // Load initial data
+    loadPatientsAndDoctors();
+    setTimeout(loadAppointments, 1000);
+</script>
+
+<div class="row mt-3">
+    <div class="col-md-6">
+        <div class="input-group mb-3">
+            <input type="number" class="form-control" id="filterPatientId" placeholder="Filter by Patient ID">
+            <button class="btn btn-outline-secondary" onclick="filterByPatient()">Filter</button>
+            <button class="btn btn-outline-primary" onclick="loadAppointments()">Show All</button>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="input-group mb-3">
+            <input type="number" class="form-control" id="filterDoctorId" placeholder="Filter by Doctor ID">
+            <button class="btn btn-outline-secondary" onclick="filterByDoctor()">Filter</button>
+            <button class="btn btn-outline-primary" onclick="loadAppointments()">Show All</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
