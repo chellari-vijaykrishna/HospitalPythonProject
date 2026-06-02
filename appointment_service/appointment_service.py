@@ -4,7 +4,11 @@ from mysql.connector import Error
 import os
 import requests
 
-app = Flask(__name__, template_folder='../templates')
+# Get the absolute path to the project root
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEMPLATE_DIR = os.path.join(PROJECT_ROOT, 'templates')
+
+app = Flask(__name__, template_folder=TEMPLATE_DIR)
 
 DB_HOST = os.environ.get('DB_HOST', 'db')
 DB_USER = os.environ.get('DB_USER', 'root')
