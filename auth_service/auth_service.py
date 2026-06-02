@@ -4,7 +4,14 @@ from mysql.connector import Error
 import hashlib
 import os
 
-app = Flask(__name__, template_folder='../templates')
+
+# Get the absolute path to the project root
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TEMPLATE_DIR = os.path.join(PROJECT_ROOT, 'templates')
+
+app = Flask(__name__, template_folder=TEMPLATE_DIR)
+
+
 app.secret_key = "hospital_secret_key"
 
 # Database configuration - Single database microservice
